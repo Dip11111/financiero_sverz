@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Flujo — Gestor de Caja Personal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:        #0a0d12;
+  --surface:   #111520;
+  --surface2:  #171c2a;
+  --surface3:  #1e2438;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.13);
+  --text:      #e8eaf0;
+  --muted:     #7a8099;
+  --muted2:    #4a5068;
+  --accent:    #4fffb0;
+  --accent2:   #00d4ff;
+  --danger:    #ff5e6c;
+  --warn:      #ffb84d;
+  --gold:      #f0c060;
+  --radius:    12px;
+  --radius-lg: 18px;
+  --mono:      'DM Mono', monospace;
+  --serif:     'DM Serif Display', serif;
+  --sans:      'Outfit', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── ONBOARDING ─────────────────────────────────────── */
+#onboarding {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+
+#onboarding::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(79,255,176,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 70%, rgba(0,212,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ob-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 3rem 3.5rem;
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.ob-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(79,255,176,0.1);
+  border: 1px solid rgba(79,255,176,0.25);
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
+.ob-card h1 {
+  font-family: var(--serif);
+  font-size: 2.6rem;
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.ob-card h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.ob-card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+
+.ob-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2rem;
+}
+
+.ob-step {
+  height: 3px;
+  flex: 1;
+  background: var(--surface3);
+  border-radius: 99px;
+  transition: background 0.3s;
+}
+
+.ob-step.active { background: var(--accent); }
+.ob-step.done   { background: rgba(79,255,176,0.4); }
+
+.ob-field {
+  margin-bottom: 1.25rem;
+}
+
+.ob-field label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.ob-field input,
+.ob-field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ob-field input:focus,
+.ob-field select:focus {
+  border-color: var(--accent);
+}
+
+.ob-field input::placeholder { color: var(--muted2); }
+
+.ob-field select option { background: var(--surface2); }
+
+.ob-hint {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #050810;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.85rem 1.5rem;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: opacity 0.2s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:active { transform: scale(0.99); }
+
+/* ── APP SHELL ──────────────────────────────────────── */
+#app {
+  display: none;
+  min-height: 100vh;
+}
+
+#app.visible { display: flex; flex-direction: column; }
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-logo {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-logo span {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.avatar {
+  width: 32px; height: 32px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--accent);
+}
+
+/* ── NAV TABS ───────────────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-tab {
+  padding: 0 1.25rem;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.nav-tab .tab-icon {
+  width: 16px; height: 16px;
+  opacity: 0.7;
+}
+
+/* ── CONTENT AREA ───────────────────────────────────── */
+.content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── SECTION HEADER ─────────────────────────────────── */
+.section-header {
+  margin-bottom: 2rem;
+}
+
+.section-header h2 {
+  font-family: var(--serif);
+  font-size: 1.9rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.section-header p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── GRID LAYOUTS ───────────────────────────────────── */
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+/* ── CARDS ──────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.card-sm {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+/* ── KPI CARDS ──────────────────────────────────────── */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 99px 99px 0 0;
+}
+
+.kpi-card.green::before  { background: var(--accent); }
+.kpi-card.blue::before   { background: var(--accent2); }
+.kpi-card.gold::before   { background: var(--gold); }
+.kpi-card.danger::before { background: var(--danger); }
+
+.kpi-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1;
+}
+
+.kpi-value.green  { color: var(--accent); }
+.kpi-value.blue   { color: var(--accent2); }
+.kpi-value.gold   { color: var(--gold); }
+.kpi-value.danger { color: var(--danger); }
+
+.kpi-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── TABLES ─────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 0.75rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--surface2); }
+
+.data-table td {
+  padding: 0.85rem 0.75rem;
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.data-table .mono { font-family: var(--mono); font-size: 0.85rem; }
+.data-table .muted { color: var(--muted); }
+
+/* ── BADGES ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.badge.green {
+  background: rgba(79,255,176,0.1);
+  color: var(--accent);
+  border: 1px solid rgba(79,255,176,0.2);
+}
+
+.badge.red {
+  background: rgba(255,94,108,0.1);
+  color: var(--danger);
+  border: 1px solid rgba(255,94,108,0.2);
+}
+
+.badge.gray {
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.badge.gold {
+  background: rgba(240,192,96,0.1);
+  color: var(--gold);
+  border: 1px solid rgba(240,192,96,0.2);
+}
+
+.badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.badge.green .badge-dot  { background: var(--accent); }
+.badge.red .badge-dot    { background: var(--danger); }
+.badge.gray .badge-dot   { background: var(--muted); }
+.badge.gold .badge-dot   { background: var(--gold); }
+
+/* ── TOGGLE ─────────────────────────────────────────── */
+.toggle {
+  width: 36px; height: 20px;
+  background: var(--surface3);
+  border-radius: 99px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.toggle.on { background: rgba(79,255,176,0.3); border-color: var(--accent); }
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--muted);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle.on::after {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+
+/* ── FORM ELEMENTS ──────────────────────────────────── */
+.form-row {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.form-field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 5px;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.9rem;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-field input:focus,
+.form-field select:focus { border-color: var(--accent); }
+
+.form-field input::placeholder { color: var(--muted2); }
+.form-field select option { background: var(--surface2); }
+
+.btn-add {
+  background: rgba(79,255,176,0.1);
+  border: 1px solid rgba(79,255,176,0.25);
+  color: var(--accent);
+  border-radius: var(--radius);
+  padding: 0.65rem 1.25rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-add:hover { background: rgba(79,255,176,0.18); }
+
+.btn-danger {
+  background: none;
+  border: none;
+  color: var(--muted2);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-danger:hover { color: var(--danger); background: rgba(255,94,108,0.1); }
+
+/* ── SUSCRIPCIONES ──────────────────────────────────── */
+.subs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sub-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.sub-card.paused {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.sub-card:not(.paused):hover { border-color: var(--border2); }
+
+.sub-logo {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.sub-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.sub-amount {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.sub-freq {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.sub-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.sub-toggle-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ── SIMULADOR ──────────────────────────────────────── */
+.sim-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sim-panel h3 {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+
+.sim-options {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.sim-option {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.sim-option.active {
+  border-color: var(--accent);
+  background: rgba(79,255,176,0.08);
+  color: var(--accent);
+}
+
+.sim-result-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.sim-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sim-result-row:last-child { border-bottom: none; }
+
+.sim-result-row .label { color: var(--muted); }
+.sim-result-row .value { font-family: var(--mono); }
+.sim-result-row .value.positive { color: var(--accent); }
+.sim-result-row .value.negative { color: var(--danger); }
+
+/* ── CHART CONTAINER ────────────────────────────────── */
+.chart-container {
+  position: relative;
+  height: 260px;
+}
+
+/* ── ALERT BAR ──────────────────────────────────────── */
+.alert-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.alert-bar.warn {
+  background: rgba(255,184,77,0.08);
+  border: 1px solid rgba(255,184,77,0.2);
+  color: var(--warn);
+}
+
+.alert-bar.info {
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.15);
+  color: var(--accent2);
+}
+
+/* ── DIVIDER ────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1.5rem 0;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────── */
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .grid-4 { grid-template-columns: 1fr; }
+  .content { padding: 1rem; }
+  .nav-tab span { display: none; }
+  .ob-card { padding: 2rem 1.5rem; }
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section.active { animation: fadeUp 0.25s ease; }
+
+.ob-card { animation: fadeUp 0.35s ease; }
+
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     ONBOARDING
+═════════════════════════════════════════════════════ -->
+<div id="onboarding">
+  <div class="ob-card">
+    <div class="ob-badge">
+      <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>
+      Configuración inicial
+    </div>
+    <h1>Hola, bienvenido a <em>Flujo</em></h1>
+    <p>Antes de empezar, ingresa tres datos esenciales. Con esto el sistema calculará tu caja real y proyectará tus finanzas.</p>
+
+    <div class="ob-steps">
+      <div class="ob-step active" id="step1"></div>
+      <div class="ob-step" id="step2"></div>
+      <div class="ob-step" id="step3"></div>
+    </div>
+
+    <div class="ob-field">
+      <label>¿Cuánto dinero tienes disponible hoy?</label>
+      <input type="number" id="ob-saldo" placeholder="Ej: 300000" min="0"/>
+      <div class="ob-hint">Saldo real en tu cuenta bancaria en este momento</div>
+    </div>
+
+    <div class="ob-field">
+      <label>Fecha de inicio del registro</label>
+      <input type="date" id="ob-fecha"/>
+      <div class="ob-hint">A partir de esta fecha el sistema empieza a contar</div>
+    </div>
+
+    <div class="ob-field">
+      <label>Moneda base</label>
+      <select id="ob-moneda">
+        <option value="CLP">CLP — Peso Chileno</option>
+        <option value="USD">USD — Dólar Americano</option>
+        <option value="EUR">EUR — Euro</option>
+      </select>
+    </div>
+
+    <div class="ob-field">
+      <label>¿Cómo te llamas?</label>
+      <input type="text" id="ob-nombre" placeholder="Ej: Juan"/>
+    </div>
+
+    <button class="btn-primary" onclick="finishOnboarding()">Comenzar →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     APP SHELL
+═════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Fl<span>u</span>jo</div>
+    <div class="topbar-user">
+      <span id="topbar-name">—</span>
+      <div class="avatar" id="topbar-avatar">—</div>
+    </div>
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showTab('dashboard')">
+      <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
+        <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
+      </svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-tab" onclick="showTab('ingresos')">
+      <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 12V4M4 8l4-4 4 4"/>
+      </svg>
+      <span>Ingresos</span>
+    </div>
+    <div class="nav-tab" onclick="showTab('gastos')">
+      <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 4v8M4 8l4 4 4-4"/>
+      </svg>
+      <span>Gastos</span>
+    </div>
+    <div class="nav-tab" onclick="showTab('suscripciones')">
+      <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+      </svg>
+      <span>Suscripciones</span>
+    </div>
+    <div class="nav-tab" onclick="showTab('simulador')">
+      <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 14l4-4 3 3 5-9"/>
+      </svg>
+      <span>Simulador</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── DASHBOARD ──────────────────────────────── -->
+    <div class="section active" id="section-dashboard">
+      <div class="section-header">
+        <h2>Dashboard</h2>
+        <p>Radiografía de tu salud financiera — solo lectura</p>
+      </div>
+
+      <div class="alert-bar info" id="dash-alert" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="7" cy="7" r="6"/><path d="M7 5v2M7 9v.5"/>
+        </svg>
+        <span id="dash-alert-text"></span>
+      </div>
+
+      <div class="grid-4">
+        <div class="kpi-card green">
+          <div class="kpi-label">Caja disponible hoy</div>
+          <div class="kpi-value green" id="kpi-caja">—</div>
+          <div class="kpi-sub">Saldo libre real</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Compromisos 30 días</div>
+          <div class="kpi-value blue" id="kpi-compromisos">—</div>
+          <div class="kpi-sub">Gastos proyectados</div>
+        </div>
+        <div class="kpi-card gold">
+          <div class="kpi-label">Ingresos del mes</div>
+          <div class="kpi-value gold" id="kpi-ingresos">—</div>
+          <div class="kpi-sub">Recurrentes activos</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Gastos del mes</div>
+          <div class="kpi-value danger" id="kpi-gastos">—</div>
+          <div class="kpi-sub">Fijos + suscripciones</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+            <div>
+              <div style="font-weight:500;margin-bottom:2px">Proyección de flujo</div>
+              <div style="font-size:0.8rem;color:var(--muted)">Próximos 3 meses</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <span class="badge green"><span class="badge-dot"></span>Base</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-proyeccion"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:500;margin-bottom:1rem">Resumen del mes</div>
+          <table class="data-table">
+            <tbody id="dash-resumen-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INGRESOS ────────────────────────────────── -->
+    <div class="section" id="section-ingresos">
+      <div class="section-header">
+        <h2>Ingresos</h2>
+        <p>Registra tus fuentes de ingreso recurrentes</p>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem">
+        <div style="font-weight:500;margin-bottom:1.25rem;font-size:0.95rem">Agregar ingreso</div>
+        <div class="form-row cols-3">
+          <div class="form-field">
+            <label>Concepto</label>
+            <input type="text" id="ing-nombre" placeholder="Ej: Salario"/>
+          </div>
+          <div class="form-field">
+            <label>Monto ($)</label>
+            <input type="number" id="ing-monto" placeholder="Ej: 2000000" min="0"/>
+          </div>
+          <div class="form-field">
+            <label>Frecuencia</label>
+            <select id="ing-freq">
+              <option value="MENSUAL">Mensual</option>
+              <option value="TRIMESTRAL">Trimestral</option>
+              <option value="SEMESTRAL">Semestral</option>
+              <option value="ANUAL">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-field">
+            <label>Día del mes</label>
+            <input type="number" id="ing-dia" placeholder="Ej: 25" min="1" max="31"/>
+          </div>
+          <div class="form-field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="ing-notas" placeholder="Ej: Honorarios proyecto X"/>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addIngreso()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 2v10M2 7h10"/>
+          </svg>
+          Agregar ingreso
+        </button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <span style="font-weight:500;font-size:0.95rem">Ingresos registrados</span>
+          <span class="badge green" id="total-ingresos-badge">Total: $0</span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Monto</th>
+              <th>Frecuencia</th>
+              <th>Día</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="ingresos-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Aún no hay ingresos registrados</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── GASTOS ──────────────────────────────────── -->
+    <div class="section" id="section-gastos">
+      <div class="section-header">
+        <h2>Gastos Fijos</h2>
+        <p>Costos inamovibles mes a mes</p>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem">
+        <div style="font-weight:500;margin-bottom:1.25rem;font-size:0.95rem">Agregar gasto fijo</div>
+        <div class="form-row cols-3">
+          <div class="form-field">
+            <label>Concepto</label>
+            <input type="text" id="gas-nombre" placeholder="Ej: Arriendo"/>
+          </div>
+          <div class="form-field">
+            <label>Monto ($)</label>
+            <input type="number" id="gas-monto" placeholder="Ej: 800000" min="0"/>
+          </div>
+          <div class="form-field">
+            <label>Frecuencia</label>
+            <select id="gas-freq">
+              <option value="MENSUAL">Mensual</option>
+              <option value="TRIMESTRAL">Trimestral</option>
+              <option value="SEMESTRAL">Semestral</option>
+              <option value="ANUAL">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-field">
+            <label>Día del mes</label>
+            <input type="number" id="gas-dia" placeholder="Ej: 5" min="1" max="31"/>
+          </div>
+          <div class="form-field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="gas-notas" placeholder="Ej: Departamento Las Condes"/>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addGasto()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 2v10M2 7h10"/>
+          </svg>
+          Agregar gasto
+        </button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <span style="font-weight:500;font-size:0.95rem">Gastos registrados</span>
+          <span class="badge red" id="total-gastos-badge">Total: $0</span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Monto</th>
+              <th>Frecuencia</th>
+              <th>Día</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="gastos-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Aún no hay gastos registrados</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SUSCRIPCIONES ──────────────────────────── -->
+    <div class="section" id="section-suscripciones">
+      <div class="section-header">
+        <h2>Suscripciones</h2>
+        <p>Detector de fugas de capital — gastos recurrentes automáticos</p>
+      </div>
+
+      <div class="grid-3" style="margin-bottom:1.5rem">
+        <div class="kpi-card green">
+          <div class="kpi-label">Total mensual</div>
+          <div class="kpi-value green" id="sub-total-mes">$0</div>
+          <div class="kpi-sub">Suscripciones activas</div>
+        </div>
+        <div class="kpi-card gold">
+          <div class="kpi-label">Total anual estimado</div>
+          <div class="kpi-value gold" id="sub-total-anual">$0</div>
+          <div class="kpi-sub">Proyección 12 meses</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Suscripciones activas</div>
+          <div class="kpi-value blue" id="sub-count">0</div>
+          <div class="kpi-sub">De <span id="sub-total-count">0</span> registradas</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem">
+        <div style="font-weight:500;margin-bottom:1.25rem;font-size:0.95rem">Agregar suscripción</div>
+        <div class="form-row cols-3">
+          <div class="form-field">
+            <label>Servicio</label>
+            <input type="text" id="sub-nombre" placeholder="Ej: Netflix"/>
+          </div>
+          <div class="form-field">
+            <label>Monto ($)</label>
+            <input type="number" id="sub-monto" placeholder="Ej: 15000" min="0"/>
+          </div>
+          <div class="form-field">
+            <label>Frecuencia de cobro</label>
+            <select id="sub-freq">
+              <option value="MENSUAL">Mensual</option>
+              <option value="ANUAL">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-field">
+            <label>Día de cobro</label>
+            <input type="number" id="sub-dia" placeholder="Ej: 10" min="1" max="31"/>
+          </div>
+          <div class="form-field">
+            <label>Emoji / ícono</label>
+            <input type="text" id="sub-emoji" placeholder="Ej: 🎬 🎵 🏋️" maxlength="4"/>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addSub()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 2v10M2 7h10"/>
+          </svg>
+          Agregar suscripción
+        </button>
+      </div>
+
+      <div class="subs-grid" id="subs-grid">
+        <div style="color:var(--muted);font-size:0.9rem;padding:1rem">Aún no hay suscripciones registradas</div>
+      </div>
+    </div>
+
+    <!-- ── SIMULADOR ──────────────────────────────── -->
+    <div class="section" id="section-simulador">
+      <div class="section-header">
+        <h2>Simulador What-If</h2>
+        <p>Evalúa el impacto de una compra grande antes de hacerla</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="sim-panel">
+          <h3>Parámetros del gasto</h3>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label>¿Qué quieres comprar?</label>
+              <input type="text" id="sim-desc" placeholder="Ej: PS5, viaje, computador"/>
+            </div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="form-field">
+              <label>Monto total ($)</label>
+              <input type="number" id="sim-monto" placeholder="Ej: 500000" min="0" oninput="calcSim()"/>
+            </div>
+            <div class="form-field">
+              <label>Mes del gasto</label>
+              <select id="sim-mes" onchange="calcSim()">
+                <option value="0">Este mes</option>
+                <option value="1">Próximo mes</option>
+                <option value="2">En 2 meses</option>
+                <option value="3">En 3 meses</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">Forma de pago</div>
+          <div class="sim-options">
+            <button class="sim-option active" id="sim-opt-contado" onclick="setSimMode('contado')">Al contado</button>
+            <button class="sim-option" id="sim-opt-cuotas" onclick="setSimMode('cuotas')">En cuotas</button>
+          </div>
+
+          <div id="sim-cuotas-config" style="display:none">
+            <div class="form-row cols-2">
+              <div class="form-field">
+                <label>Número de cuotas</label>
+                <select id="sim-ncuotas" onchange="calcSim()">
+                  <option value="2">2 cuotas</option>
+                  <option value="3" selected>3 cuotas</option>
+                  <option value="6">6 cuotas</option>
+                  <option value="12">12 cuotas</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Interés (%)</label>
+                <input type="number" id="sim-interes" value="0" min="0" max="100" step="0.1" oninput="calcSim()"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-result-box" id="sim-result-box">
+            <div style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem">Resultado del análisis</div>
+            <div id="sim-result-rows">
+              <div style="color:var(--muted);font-size:0.85rem">Ingresa los datos del gasto para ver el análisis</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+            <div>
+              <div style="font-weight:500;margin-bottom:2px">Impacto en el flujo</div>
+              <div style="font-size:0.8rem;color:var(--muted)">Línea punteada = escenario simulado</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <span class="badge green"><span class="badge-dot"></span>Base</span>
+              <span class="badge gold"><span class="badge-dot"></span>Con gasto</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-simulador"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+/* ── STATE ──────────────────────────────────────────── */
+const state = {
+  nombre:     '',
+  saldo:      0,
+  fecha:      '',
+  moneda:     'CLP',
+  ingresos:   [],
+  gastos:     [],
+  subs:       [],
+  nextId:     1,
+};
+
+let chartProyeccion = null;
+let chartSimulador  = null;
+let simMode = 'contado';
+
+/* ── HELPERS ────────────────────────────────────────── */
+function fmt(n) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: state.moneda || 'CLP', maximumFractionDigits: 0 }).format(n);
+}
+
+function initDate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+/* ── ONBOARDING ─────────────────────────────────────── */
+document.getElementById('ob-fecha').value = initDate();
+
+function finishOnboarding() {
+  const saldo  = parseFloat(document.getElementById('ob-saldo').value);
+  const fecha  = document.getElementById('ob-fecha').value;
+  const moneda = document.getElementById('ob-moneda').value;
+  const nombre = document.getElementById('ob-nombre').value.trim() || 'Usuario';
+
+  if (!saldo || saldo < 0) { alert('Ingresa un saldo válido'); return; }
+  if (!fecha) { alert('Selecciona una fecha de inicio'); return; }
+
+  state.saldo   = saldo;
+  state.fecha   = fecha;
+  state.moneda  = moneda;
+  state.nombre  = nombre;
+
+  document.getElementById('step1').classList.add('done');
+  document.getElementById('step2').classList.add('done','active');
+  document.getElementById('step3').classList.add('done','active');
+
+  document.getElementById('topbar-name').textContent = nombre;
+  document.getElementById('topbar-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+  setTimeout(() => {
+    document.getElementById('onboarding').style.display = 'none';
+    const app = document.getElementById('app');
+    app.classList.add('visible');
+    loadDemoData();
+    renderDashboard();
+    renderIngresos();
+    renderGastos();
+    renderSubs();
+    initCharts();
+  }, 300);
+}
+
+/* ── DEMO DATA ──────────────────────────────────────── */
+function loadDemoData() {
+  addItemSilent('ingresos', { nombre: 'Salario', monto: 2000000, freq: 'MENSUAL', dia: 25, notas: '', estado: true });
+  addItemSilent('ingresos', { nombre: 'Honorarios', monto: 500000, freq: 'MENSUAL', dia: 10, notas: '', estado: true });
+  addItemSilent('gastos', { nombre: 'Arriendo', monto: 800000, freq: 'MENSUAL', dia: 5, notas: '', estado: true });
+  addItemSilent('gastos', { nombre: 'Servicios', monto: 300000, freq: 'MENSUAL', dia: 20, notas: '', estado: true });
+  addItemSilent('gastos', { nombre: 'Seguro anual', monto: 600000, freq: 'ANUAL', dia: 15, notas: 'Vence abril', estado: true });
+  addSubSilent({ nombre: 'Netflix', monto: 15000, freq: 'MENSUAL', dia: 10, emoji: '🎬', estado: true });
+  addSubSilent({ nombre: 'Spotify', monto: 9900, freq: 'MENSUAL', dia: 15, emoji: '🎵', estado: true });
+  addSubSilent({ nombre: 'Gimnasio', monto: 50000, freq: 'MENSUAL', dia: 1, emoji: '🏋️', estado: true });
+  addSubSilent({ nombre: 'Adobe CC', monto: 14990, freq: 'MENSUAL', dia: 8, emoji: '🎨', estado: true });
+}
+
+function addItemSilent(type, data) {
+  data.id = state.nextId++;
+  state[type].push(data);
+}
+
+function addSubSilent(data) {
+  data.id = state.nextId++;
+  state.subs.push(data);
+}
+
+/* ── NAVIGATION ─────────────────────────────────────── */
+function showTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('section-'+tab).classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'simulador') { renderSimulador(); calcSim(); }
+  if (tab === 'suscripciones') renderSubsKpis();
+}
+
+/* ── CALCULATIONS ───────────────────────────────────── */
+function getMonthlyAmount(item) {
+  switch(item.freq) {
+    case 'MENSUAL':     return item.monto;
+    case 'TRIMESTRAL':  return item.monto / 3;
+    case 'SEMESTRAL':   return item.monto / 6;
+    case 'ANUAL':       return item.monto / 12;
+    default:            return item.monto;
+  }
+}
+
+function getTotalIngresos() {
+  return state.ingresos.filter(i => i.estado).reduce((s,i) => s + getMonthlyAmount(i), 0);
+}
+
+function getTotalGastos() {
+  const g = state.gastos.filter(i => i.estado).reduce((s,i) => s + getMonthlyAmount(i), 0);
+  const sub = state.subs.filter(i => i.estado).reduce((s,i) => s + getMonthlyAmount(i), 0);
+  return g + sub;
+}
+
+function getCompromisos30() {
+  const g = state.gastos.filter(i => i.estado && i.freq === 'MENSUAL').reduce((s,i) => s + i.monto, 0);
+  const sub = state.subs.filter(i => i.estado && i.freq === 'MENSUAL').reduce((s,i) => s + i.monto, 0);
+  return g + sub;
+}
+
+function getCajaDisponible() {
+  return state.saldo - getCompromisos30();
+}
+
+function proyectarFlujo(meses, gastoSim) {
+  const labels = [];
+  const base   = [];
+  const withSim = gastoSim ? [] : null;
+
+  const now = new Date();
+  let saldo = state.saldo;
+  const netMensual = getTotalIngresos() - getTotalGastos();
+
+  for (let i = 0; i < meses; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    labels.push(d.toLocaleString('es-CL', { month: 'short', year: '2-digit' }));
+    saldo += netMensual;
+    base.push(Math.round(saldo));
+
+    if (withSim !== null) {
+      let simExtra = 0;
+      if (gastoSim.mode === 'contado' && i === gastoSim.mes) {
+        simExtra = gastoSim.total;
+      } else if (gastoSim.mode === 'cuotas') {
+        const end = gastoSim.mes + gastoSim.cuotas - 1;
+        if (i >= gastoSim.mes && i <= end) simExtra = gastoSim.cuotaVal;
+      }
+      const prev = withSim.length > 0 ? withSim[withSim.length-1] : state.saldo;
+      withSim.push(Math.round(prev + netMensual - simExtra));
+    }
+  }
+
+  return { labels, base, withSim };
+}
+
+/* ── DASHBOARD ──────────────────────────────────────── */
+function renderDashboard() {
+  const caja = getCajaDisponible();
+  const comp = getCompromisos30();
+  const ing  = getTotalIngresos();
+  const gas  = getTotalGastos();
+
+  document.getElementById('kpi-caja').textContent        = fmt(caja);
+  document.getElementById('kpi-compromisos').textContent = fmt(comp);
+  document.getElementById('kpi-ingresos').textContent    = fmt(ing);
+  document.getElementById('kpi-gastos').textContent      = fmt(gas);
+
+  const alertEl   = document.getElementById('dash-alert');
+  const alertText = document.getElementById('dash-alert-text');
+
+  if (caja < 0) {
+    alertEl.style.display = 'flex';
+    alertEl.className = 'alert-bar warn';
+    alertText.textContent = `⚠️ Tu caja disponible es negativa (${fmt(caja)}). Considera reducir gastos o adelantar ingresos.`;
+  } else if (caja < ing * 0.2) {
+    alertEl.style.display = 'flex';
+    alertEl.className = 'alert-bar info';
+    alertText.textContent = `Tu caja libre es ajustada. Tienes ${fmt(caja)} disponibles después de compromisos del mes.`;
+  } else {
+    alertEl.style.display = 'none';
+  }
+
+  const resumenBody = document.getElementById('dash-resumen-body');
+  const filas = [
+    ['Saldo inicial', fmt(state.saldo), ''],
+    ['+ Ingresos del mes', fmt(ing), 'green'],
+    ['− Gastos fijos', fmt(state.gastos.filter(g=>g.estado).reduce((s,g)=>s+getMonthlyAmount(g),0)), 'red'],
+    ['− Suscripciones', fmt(state.subs.filter(s=>s.estado).reduce((s,sub)=>s+getMonthlyAmount(sub),0)), 'red'],
+    ['= Flujo neto mensual', fmt(ing - gas), ing >= gas ? 'green' : 'red'],
+    ['Caja libre real', fmt(caja), caja >= 0 ? 'green' : 'red'],
+  ];
+
+  resumenBody.innerHTML = filas.map(([label, val, color]) => `
+    <tr>
+      <td>${label}</td>
+      <td class="mono" style="text-align:right;color:${color === 'green' ? 'var(--accent)' : color === 'red' ? 'var(--danger)' : 'var(--text)'}">${val}</td>
+    </tr>
+  `).join('');
+
+  updateProyeccionChart();
+}
+
+/* ── CHARTS ─────────────────────────────────────────── */
+function chartDefaults() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e2438',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        titleColor: '#7a8099',
+        bodyColor: '#e8eaf0',
+        padding: 10,
+        callbacks: {
+          label: ctx => ' ' + fmt(ctx.parsed.y)
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: { color: '#7a8099', font: { family: 'Outfit', size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: {
+          color: '#7a8099',
+          font: { family: 'DM Mono', size: 10 },
+          callback: v => {
+            if (Math.abs(v) >= 1000000) return (v/1000000).toFixed(1)+'M';
+            if (Math.abs(v) >= 1000) return (v/1000).toFixed(0)+'k';
+            return v;
+          }
+        }
+      }
+    }
+  };
+}
+
+function initCharts() {
+  const pCtx = document.getElementById('chart-proyeccion').getContext('2d');
+  chartProyeccion = new Chart(pCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: { ...chartDefaults() }
+  });
+
+  const sCtx = document.getElementById('chart-simulador').getContext('2d');
+  chartSimulador = new Chart(sCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: { ...chartDefaults() }
+  });
+
+  updateProyeccionChart();
+  updateSimChart(null);
+}
+
+function updateProyeccionChart() {
+  if (!chartProyeccion) return;
+  const { labels, base } = proyectarFlujo(3, null);
+  chartProyeccion.data.labels = labels;
+  chartProyeccion.data.datasets = [{
+    data: base,
+    borderColor: '#4fffb0',
+    backgroundColor: 'rgba(79,255,176,0.06)',
+    borderWidth: 2,
+    pointBackgroundColor: '#4fffb0',
+    pointRadius: 4,
+    tension: 0.3,
+    fill: true
+  }];
+  chartProyeccion.update();
+}
+
+function updateSimChart(gastoSim) {
+  if (!chartSimulador) return;
+  const { labels, base, withSim } = proyectarFlujo(3, gastoSim);
+
+  const datasets = [{
+    label: 'Base',
+    data: base,
+    borderColor: '#4fffb0',
+    backgroundColor: 'rgba(79,255,176,0.04)',
+    borderWidth: 2,
+    pointBackgroundColor: '#4fffb0',
+    pointRadius: 3,
+    tension: 0.3,
+    fill: false
+  }];
+
+  if (withSim) {
+    datasets.push({
+      label: 'Con gasto',
+      data: withSim,
+      borderColor: '#f0c060',
+      backgroundColor: 'rgba(240,192,96,0.04)',
+      borderWidth: 2,
+      borderDash: [5,4],
+      pointBackgroundColor: '#f0c060',
+      pointRadius: 3,
+      tension: 0.3,
+      fill: false
+    });
+  }
+
+  chartSimulador.data.labels = labels;
+  chartSimulador.data.datasets = datasets;
+  chartSimulador.update();
+}
+
+/* ── INGRESOS ───────────────────────────────────────── */
+function addIngreso() {
+  const nombre = document.getElementById('ing-nombre').value.trim();
+  const monto  = parseFloat(document.getElementById('ing-monto').value);
+  const freq   = document.getElementById('ing-freq').value;
+  const dia    = parseInt(document.getElementById('ing-dia').value);
+  const notas  = document.getElementById('ing-notas').value.trim();
+
+  if (!nombre || !monto || monto <= 0 || !dia || dia < 1 || dia > 31) {
+    alert('Completa todos los campos correctamente'); return;
+  }
+
+  state.ingresos.push({ id: state.nextId++, nombre, monto, freq, dia, notas, estado: true });
+  renderIngresos();
+  renderDashboard();
+  updateProyeccionChart();
+
+  ['ing-nombre','ing-monto','ing-dia','ing-notas'].forEach(id => document.getElementById(id).value = '');
+}
+
+function toggleItem(type, id) {
+  const item = state[type].find(x => x.id === id);
+  if (item) item.estado = !item.estado;
+  if (type === 'ingresos') renderIngresos();
+  if (type === 'gastos')   renderGastos();
+  if (type === 'subs')     renderSubs();
+  renderDashboard();
+  updateProyeccionChart();
+}
+
+function deleteItem(type, id) {
+  state[type] = state[type].filter(x => x.id !== id);
+  if (type === 'ingresos') renderIngresos();
+  if (type === 'gastos')   renderGastos();
+  if (type === 'subs')     renderSubs();
+  renderDashboard();
+  updateProyeccionChart();
+}
+
+function renderIngresos() {
+  const body = document.getElementById('ingresos-body');
+  const total = state.ingresos.filter(i=>i.estado).reduce((s,i)=>s+getMonthlyAmount(i),0);
+  document.getElementById('total-ingresos-badge').textContent = `Total mensual: ${fmt(total)}`;
+
+  if (state.ingresos.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Aún no hay ingresos registrados</td></tr>';
+    return;
+  }
+
+  body.innerHTML = state.ingresos.map(item => `
+    <tr>
+      <td><strong style="font-weight:500">${item.nombre}</strong>${item.notas ? `<div style="font-size:0.75rem;color:var(--muted)">${item.notas}</div>` : ''}</td>
+      <td class="mono" style="color:var(--accent)">${fmt(item.monto)}</td>
+      <td class="muted">${item.freq.charAt(0)+item.freq.slice(1).toLowerCase()}</td>
+      <td class="muted">Día ${item.dia}</td>
+      <td>
+        <span class="badge ${item.estado ? 'green' : 'gray'}">
+          <span class="badge-dot"></span>${item.estado ? 'Activo' : 'Pausado'}
+        </span>
+      </td>
+      <td style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
+        <div class="toggle ${item.estado ? 'on' : ''}" onclick="toggleItem('ingresos', ${item.id})"></div>
+        <button class="btn-danger" onclick="deleteItem('ingresos', ${item.id})" title="Eliminar">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ── GASTOS ─────────────────────────────────────────── */
+function addGasto() {
+  const nombre = document.getElementById('gas-nombre').value.trim();
+  const monto  = parseFloat(document.getElementById('gas-monto').value);
+  const freq   = document.getElementById('gas-freq').value;
+  const dia    = parseInt(document.getElementById('gas-dia').value);
+  const notas  = document.getElementById('gas-notas').value.trim();
+
+  if (!nombre || !monto || monto <= 0 || !dia || dia < 1 || dia > 31) {
+    alert('Completa todos los campos correctamente'); return;
+  }
+
+  state.gastos.push({ id: state.nextId++, nombre, monto, freq, dia, notas, estado: true });
+  renderGastos();
+  renderDashboard();
+  updateProyeccionChart();
+
+  ['gas-nombre','gas-monto','gas-dia','gas-notas'].forEach(id => document.getElementById(id).value = '');
+}
+
+function renderGastos() {
+  const body = document.getElementById('gastos-body');
+  const total = state.gastos.filter(i=>i.estado).reduce((s,i)=>s+getMonthlyAmount(i),0);
+  document.getElementById('total-gastos-badge').textContent = `Total mensual: ${fmt(total)}`;
+
+  if (state.gastos.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Aún no hay gastos registrados</td></tr>';
+    return;
+  }
+
+  body.innerHTML = state.gastos.map(item => `
+    <tr>
+      <td><strong style="font-weight:500">${item.nombre}</strong>${item.notas ? `<div style="font-size:0.75rem;color:var(--muted)">${item.notas}</div>` : ''}</td>
+      <td class="mono" style="color:var(--danger)">${fmt(item.monto)}</td>
+      <td class="muted">${item.freq.charAt(0)+item.freq.slice(1).toLowerCase()}</td>
+      <td class="muted">Día ${item.dia}</td>
+      <td>
+        <span class="badge ${item.estado ? 'green' : 'gray'}">
+          <span class="badge-dot"></span>${item.estado ? 'Activo' : 'Pausado'}
+        </span>
+      </td>
+      <td style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
+        <div class="toggle ${item.estado ? 'on' : ''}" onclick="toggleItem('gastos', ${item.id})"></div>
+        <button class="btn-danger" onclick="deleteItem('gastos', ${item.id})" title="Eliminar">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ── SUSCRIPCIONES ──────────────────────────────────── */
+function addSub() {
+  const nombre = document.getElementById('sub-nombre').value.trim();
+  const monto  = parseFloat(document.getElementById('sub-monto').value);
+  const freq   = document.getElementById('sub-freq').value;
+  const dia    = parseInt(document.getElementById('sub-dia').value);
+  const emoji  = document.getElementById('sub-emoji').value.trim() || '💳';
+
+  if (!nombre || !monto || monto <= 0 || !dia || dia < 1 || dia > 31) {
+    alert('Completa todos los campos correctamente'); return;
+  }
+
+  state.subs.push({ id: state.nextId++, nombre, monto, freq, dia, emoji, estado: true });
+  renderSubs();
+  renderSubsKpis();
+  renderDashboard();
+  updateProyeccionChart();
+
+  ['sub-nombre','sub-monto','sub-dia','sub-emoji'].forEach(id => document.getElementById(id).value = '');
+}
+
+function renderSubs() {
+  const grid = document.getElementById('subs-grid');
+  renderSubsKpis();
+
+  if (state.subs.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;padding:1rem">Aún no hay suscripciones registradas</div>';
+    return;
+  }
+
+  grid.innerHTML = state.subs.map(item => `
+    <div class="sub-card ${item.estado ? '' : 'paused'}" id="sub-card-${item.id}">
+      <div class="sub-logo">${item.emoji}</div>
+      <div class="sub-name">${item.nombre}</div>
+      <div class="sub-amount">${fmt(item.monto)}</div>
+      <div class="sub-freq">
+        ${item.freq === 'MENSUAL' ? 'Mensual · día ' + item.dia : 'Anual · día ' + item.dia}
+        ${item.freq === 'ANUAL' ? `<br><span style="color:var(--gold)">≈ ${fmt(item.monto/12)}/mes</span>` : ''}
+      </div>
+      <div class="sub-toggle-row">
+        <span class="sub-toggle-label">${item.estado ? 'Activa' : 'Pausada'}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="toggle ${item.estado ? 'on' : ''}" onclick="toggleItem('subs', ${item.id})"></div>
+          <button class="btn-danger" onclick="deleteItem('subs', ${item.id})" title="Eliminar">✕</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSubsKpis() {
+  const active = state.subs.filter(s => s.estado);
+  const mensual = active.reduce((s, sub) => s + getMonthlyAmount(sub), 0);
+  const anual   = mensual * 12;
+
+  document.getElementById('sub-total-mes').textContent   = fmt(mensual);
+  document.getElementById('sub-total-anual').textContent = fmt(anual);
+  document.getElementById('sub-count').textContent       = active.length;
+  document.getElementById('sub-total-count').textContent = state.subs.length;
+}
+
+/* ── SIMULADOR ──────────────────────────────────────── */
+function setSimMode(mode) {
+  simMode = mode;
+  document.getElementById('sim-opt-contado').classList.toggle('active', mode === 'contado');
+  document.getElementById('sim-opt-cuotas').classList.toggle('active', mode === 'cuotas');
+  document.getElementById('sim-cuotas-config').style.display = mode === 'cuotas' ? 'block' : 'none';
+  calcSim();
+}
+
+function renderSimulador() {
+  updateSimChart(null);
+}
+
+function calcSim() {
+  const monto = parseFloat(document.getElementById('sim-monto').value);
+  const mes   = parseInt(document.getElementById('sim-mes').value);
+  const rows  = document.getElementById('sim-result-rows');
+
+  if (!monto || monto <= 0) {
+    rows.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Ingresa los datos del gasto para ver el análisis</div>';
+    updateSimChart(null);
+    return;
+  }
+
+  let gastoSim;
+  let html = '';
+
+  const { base } = proyectarFlujo(3, null);
+  const saldoMes = base[mes] || state.saldo;
+
+  if (simMode === 'contado') {
+    const saldoConGasto = saldoMes - monto;
+    gastoSim = { mode: 'contado', total: monto, mes };
+    html = `
+      <div class="sim-result-row"><span class="label">Saldo proyectado sin gasto</span><span class="value positive">${fmt(saldoMes)}</span></div>
+      <div class="sim-result-row"><span class="label">Impacto al contado</span><span class="value negative">−${fmt(monto)}</span></div>
+      <div class="sim-result-row"><span class="label">Saldo resultante</span><span class="value ${saldoConGasto >= 0 ? 'positive' : 'negative'}">${fmt(saldoConGasto)}</span></div>
+      <div class="sim-result-row"><span class="label">Veredicto</span><span class="value ${saldoConGasto >= 0 ? 'positive' : 'negative'}">${saldoConGasto >= 0 ? '✓ La caja lo soporta' : '⚠ La caja se ahoga'}</span></div>
+    `;
+  } else {
+    const ncuotas = parseInt(document.getElementById('sim-ncuotas').value);
+    const interes = parseFloat(document.getElementById('sim-interes').value) || 0;
+    const totalConInteres = monto * (1 + interes/100);
+    const cuota = totalConInteres / ncuotas;
+    gastoSim = { mode: 'cuotas', total: monto, mes, cuotas: ncuotas, cuotaVal: cuota };
+    html = `
+      <div class="sim-result-row"><span class="label">Monto total</span><span class="value">${fmt(monto)}</span></div>
+      ${interes > 0 ? `<div class="sim-result-row"><span class="label">Total con interés (${interes}%)</span><span class="value negative">${fmt(totalConInteres)}</span></div>` : ''}
+      <div class="sim-result-row"><span class="label">Cuota mensual</span><span class="value">${fmt(cuota)} × ${ncuotas}</span></div>
+      <div class="sim-result-row"><span class="label">Impacto por mes</span><span class="value negative">−${fmt(cuota)}</span></div>
+      <div class="sim-result-row"><span class="label">Veredicto</span><span class="value positive">✓ Distribuido en ${ncuotas} meses</span></div>
+    `;
+  }
+
+  rows.innerHTML = html;
+  updateSimChart(gastoSim);
+}
+</script>
+</body>
+</html>
